@@ -12,9 +12,11 @@ Vagrant.configure("2") do |config|
 	end
 
 	config.vm.define "admin", primary: true do |admin|
+		admin.vm.hostname = "admin.local"		
 	end
 
 	config.vm.define "osd1" do |osd1|
+		osd1.vm.hostname = "osd1.local"
 		osd1.vm.network :private_network,
       		:type => "dhcp",
       		:libvirt__dhcp_start => "172.28.128.10",
@@ -47,6 +49,7 @@ Vagrant.configure("2") do |config|
 	end
 
 	config.vm.define "osd2" do |osd2|
+		osd2.vm.hostname = "osd2.local"
 		osd2.vm.network :private_network,
       		:type => "dhcp",
       		:libvirt__dhcp_start => "172.28.128.10",
