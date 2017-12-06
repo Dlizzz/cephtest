@@ -20,7 +20,7 @@
 #               |               |                | 
 #               |               |                | 
 # =========================================================================================
-set -xv
+#set -xv
 
 # Version
 VERSION=ceph-install-1.0-120417
@@ -32,9 +32,6 @@ GUEST_USER_DIR="/home/$CEPH_ADMIN_USER"
 GUEST_USER_SSH_DIR="$GUEST_USER_DIR/.ssh"
 GUEST_VAGRANT_SCRIPT_DIR="/vagrant/scripts"
 GUEST_VAGRANT_SSH_DIR="/vagrant/.ssh"
-
-GUEST_IP=$(ip addr show eth0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
-PUBLIC_NETWORK=$(echo $GUEST_IP | awk -F '.' '{print $1"."$2"."$3".0/24"}')
 
 mkdir -p "$GUEST_USER_DIR/ceph-cluster"
 cd "$GUEST_USER_DIR/ceph-cluster"

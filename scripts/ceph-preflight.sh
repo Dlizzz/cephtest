@@ -42,9 +42,6 @@ fi
 # Create user ceph-admin
 useradd -m -s /bin/bash $CEPH_ADMIN_USER
 
-# Clean-up previous provisioning
-$CEPH_ADMIN_EXEC rm -f "$GUEST_USER_DIR/provision-ok"
-
 # Make ceph-admin passwordless sudoer
 echo "$CEPH_ADMIN_USER ALL = (root) NOPASSWD:ALL" | tee "/etc/sudoers.d/$CEPH_ADMIN_USER"
 chmod 0440 "/etc/sudoers.d/$CEPH_ADMIN_USER"
