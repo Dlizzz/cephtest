@@ -29,6 +29,10 @@ CEPH_ADMIN_USER="ceph-admin"
 CEPH_ADMIN_EXEC="sudo -i -u $CEPH_ADMIN_USER"
 
 # Machines
-NODES="node-admin node-osd1 node-osd2"
 ADMIN_NODE="node-admin"
+OSD_NODES="node-osd1 node-osd2"
+NODES="$ADMIN_NODE $OSD_NODES"
+
+# Networks
+CLUSTER_NETWORK="172.28.128.0"
 

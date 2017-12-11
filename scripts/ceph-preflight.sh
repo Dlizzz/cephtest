@@ -60,7 +60,7 @@ $CEPH_ADMIN_EXEC rm -f "$GUEST_USER_SSH_DIR/authorized_keys"
 $CEPH_ADMIN_EXEC cp "$GUEST_VAGRANT_SSH_DIR/$CEPH_ADMIN_USER-id_rsa.pub" "$GUEST_USER_SSH_DIR/authorized_keys"
 $CEPH_ADMIN_EXEC chmod 644 "$GUEST_USER_SSH_DIR/authorized_keys"
 
-# Make debconf non interactive
+# Make debconf non interactive and set the right local
 export DEBIAN_FRONTEND=noninteractive
 
 # Install ceph repository 
@@ -68,14 +68,25 @@ wget -q -O- 'https://download.ceph.com/keys/release.asc' | apt-key add -
 echo deb https://download.ceph.com/debian/ $(lsb_release -sc) main | tee /etc/apt/sources.list.d/ceph.list
 apt-get update
 
-# Install chrony (time synchronization) and ceph-deploy
-apt-get -y install chrony ceph-deploy
+# Install chrony for time synchronization, gdisk for GPT partitioning, 
+# vnstat for network stats, htop for system monitor and ceph-deploy
+apt-get -y install chrony gdisk vnstat htop ceph-deploy
 
 # Modify /etc/hosts to allow ceph-deploy to resolve the guest
 # Need to replace the loopback address by the real address
 GUEST_NAME=$(hostname -s)
-GUEST_IP=$(ip addr show eth0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
-sed -i "s/127.0.0.1\t$GUEST_NAME\t$GUEST_NAME/$GUEST_IP\t$GUEST_NAME\t$GUEST_NAME/g" /etc/hosts
+IP_ADDRESS=$(ip addr show eth0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
+sed -i "s/127.0.0.1\t$GUEST_NAME\t$GUEST_NAME/$IP_ADDRESS\t$GUEST_NAME\t$GUEST_NAME/g" /etc/hosts
+
+# Create partitions on journal disk for osd nodes only
+for NODE in $OSD_NODES; do
+    if [[ NODE == $GUEST_NAME ]]; then
+        sgdisk --new=0:0:10G /dev/vda > /dev/null 2>&1
+        sgdisk --new=0:0:20G /dev/vda > /dev/null 2>&1
+        sgdisk --largest-new=0 /dev/vda > /dev/null 2>&1
+        sgdisk --print /dev/vda
+    fi
+done
 
 # Full update
 #apt-get -y dist-upgrade
