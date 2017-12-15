@@ -26,7 +26,7 @@ Vagrant.configure("2") do |config|
 
 	# admin VM
 	config.vm.define "node-admin", primary: true do |admin|
-		admin.vm.hostname = "node-admin"		
+		admin.vm.hostname = "node-admin"
 	end
 
 	# osd1 VM with private cluster network
