@@ -24,13 +24,6 @@ Vagrant.configure("2") do |config|
 		libvirt.video_type = "qxl"
 	end
 
-	# Define bridged public network
-	config.vm.network :public_network,
-		:dev => "eno1",
-		:mode => "bridge",
-		:type => "bridge",
-		:network_name => "public-net"
-
 	# admin VM
 	config.vm.define "node-admin", primary: true do |admin|
 		admin.vm.hostname = "node-admin"		
