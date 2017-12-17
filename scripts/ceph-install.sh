@@ -27,11 +27,7 @@ VERSION=ceph-install-1.0-120417
 
 # This script is executed in guest context
 source "/vagrant/scripts/cephtest-utils.sh"
-# Directories (depending of the context)
-GUEST_USER_DIR="/home/$CEPH_ADMIN_USER"
-GUEST_USER_SSH_DIR="$GUEST_USER_DIR/.ssh"
-GUEST_VAGRANT_SCRIPT_DIR="/vagrant/scripts"
-GUEST_VAGRANT_SSH_DIR="/vagrant/.ssh"
+
 # Network (dynamically defined by Vagrant)
 IP_ADDRESS=$(ip addr show eth0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
 PUBLIC_NETWORK=$(echo $IP_ADDRESS | awk -F '.' '{print $1"."$2"."$3".0"}')
@@ -39,6 +35,12 @@ PUBLIC_NETWORK=$(echo $IP_ADDRESS | awk -F '.' '{print $1"."$2"."$3".0"}')
 # Make sure only CEPH_ADMIN_USER can run the script
 if [[ $(whoami) != $CEPH_ADMIN_USER ]]; then
    echo "This script must be run as $CEPH_ADMIN_USER" 1>&2
+   exit 1
+fi
+
+# Make sure this script is run from the admin node
+if [[ $(hostname -s) != $ADMIN_NODE ]]; then
+   echo "This script must be run from $ADMIN_NODE" 1>&2
    exit 1
 fi
 

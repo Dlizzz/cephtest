@@ -28,7 +28,7 @@ VERSION=cephtest-utils-1.0-120417
 CEPH_ADMIN_USER="ceph-admin"
 CEPH_ADMIN_EXEC="sudo -i -u $CEPH_ADMIN_USER"
 
-# Machines
+# Nodes
 ADMIN_NODE="node-admin"
 OSD_NODES="node-osd1 node-osd2"
 NODES="$ADMIN_NODE $OSD_NODES"
@@ -36,3 +36,18 @@ NODES="$ADMIN_NODE $OSD_NODES"
 # Networks
 CLUSTER_NETWORK="172.28.128.0"
 
+# Guest name
+GUEST_NAME=$(hostname -s)
+
+# Guest directories
+GUEST_USER_DIR="/home/$CEPH_ADMIN_USER"
+GUEST_USER_SSH_DIR="$GUEST_USER_DIR/.ssh"
+GUEST_VAGRANT_DIR="/vagrant"
+GUEST_VAGRANT_SCRIPT_DIR="$GUEST_VAGRANT_DIR/scripts"
+GUEST_VAGRANT_SSH_DIR="$GUEST_VAGRANT_DIR/.ssh"
+GUEST_VAGRANT_SIGNAL_DIR="$GUEST_VAGRANT_DIR/.signals"
+
+# Host directories
+HOST_SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+HOST_SSH_DIR="$(readlink -f "$HOST_SCRIPT_DIR/../.ssh")"
+HOST_SIGNAL_DIR="$(readlink -f "$HOST_SCRIPT_DIR/../.signals")"
