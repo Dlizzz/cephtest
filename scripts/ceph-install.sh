@@ -78,8 +78,6 @@ ceph-deploy admin $NODES
 ceph-deploy mon add $OSD_NODES
 
 # Create manager on all nodes
-#sudo mkdir -p /var/lib/ceph/mgr/ceph-$ADMIN_NODE
-#sudo chown ceph:ceph /var/lib/ceph/mgr/ceph-$ADMIN_NODE
 ceph-deploy mgr create $NODES
 
 # Create metadata server on osd nodes
