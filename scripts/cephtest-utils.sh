@@ -26,7 +26,6 @@ VERSION=cephtest-utils-1.0-120417
 
 # Ceph user
 CEPH_ADMIN_USER="ceph-admin"
-CEPH_ADMIN_EXEC="sudo -i -u $CEPH_ADMIN_USER"
 
 # Nodes
 ADMIN_NODE="node-admin"
@@ -34,7 +33,7 @@ OSD_NODES="node-osd1 node-osd2"
 NODES="$ADMIN_NODE $OSD_NODES"
 
 # Networks
-CLUSTER_NETWORK="172.28.128.0"
+CLUSTER_NETWORK="172.28.128.0/24"
 
 # Guest name
 GUEST_NAME=$(hostname -s)

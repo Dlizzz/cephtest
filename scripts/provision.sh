@@ -36,46 +36,23 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-# Create user ceph-admin if not existing
-cat /etc/passwd | grep $CEPH_ADMIN_USER
-if [[ $? -ne 0 ]]; then
-    useradd -m -s /bin/bash $CEPH_ADMIN_USER
-fi
-
-# Make ceph-admin passwordless sudoer
-echo "$CEPH_ADMIN_USER ALL = (root) NOPASSWD:ALL" | tee "/etc/sudoers.d/$CEPH_ADMIN_USER"
-chmod 0440 "/etc/sudoers.d/$CEPH_ADMIN_USER"
-
-# Copy ceph-admin ssh keys and ssh config from Vagrant synced folder (muste be created by vagrant-preflight script)
-$CEPH_ADMIN_EXEC mkdir -p "$GUEST_USER_SSH_DIR"
-$CEPH_ADMIN_EXEC chmod 700 "$GUEST_USER_SSH_DIR"
-for FILE in id_rsa id_rsa.pub config; do
-    $CEPH_ADMIN_EXEC rm -f "$GUEST_USER_SSH_DIR/$FILE"
-    $CEPH_ADMIN_EXEC cp "$GUEST_VAGRANT_SSH_DIR/$CEPH_ADMIN_USER-$FILE" "$GUEST_USER_SSH_DIR/$FILE"
-    $CEPH_ADMIN_EXEC chmod 644 "$GUEST_USER_SSH_DIR/$FILE"
-done  
-$CEPH_ADMIN_EXEC chmod 600 "$GUEST_USER_SSH_DIR/id_rsa"
-# Copy ceph-admin public key in authorized_keys 
-$CEPH_ADMIN_EXEC rm -f "$GUEST_USER_SSH_DIR/authorized_keys"
-$CEPH_ADMIN_EXEC cp "$GUEST_VAGRANT_SSH_DIR/$CEPH_ADMIN_USER-id_rsa.pub" "$GUEST_USER_SSH_DIR/authorized_keys"
-$CEPH_ADMIN_EXEC chmod 644 "$GUEST_USER_SSH_DIR/authorized_keys"
-
-# Make debconf non interactive and set the right local
+# Make debconf non interactive
 export DEBIAN_FRONTEND=noninteractive
+# Make sure we have the french locale
+locale-gen fr_FR.UTF-8
 
-# Install ceph repository 
+# Install ceph repository (luminous version)
 wget -q -O- 'https://download.ceph.com/keys/release.asc' | apt-key add -
-echo deb https://download.ceph.com/debian/ $(lsb_release -sc) main | tee /etc/apt/sources.list.d/ceph.list
+echo deb https://download.ceph.com/debian-luminous/ $(lsb_release -sc) main | tee /etc/apt/sources.list.d/ceph.list
 apt-get update
 
 # Install chrony for time synchronization, gdisk for GPT partitioning, 
 # vnstat for network stats, htop for system monitor and ceph-deploy
 apt-get -y install chrony gdisk vnstat htop ceph-deploy
 
-# Modify /etc/hosts to allow ceph-deploy to resolve the guests
-IP_ADDRESS=$(ip addr show eth0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
-# Need to replace the loopback address by the real address
-sed -i "s/127.0.0.1\t$GUEST_NAME\t$GUEST_NAME/$IP_ADDRESS\t$GUEST_NAME\t$GUEST_NAME/g" /etc/hosts
+# Full update
+#apt-get -y dist-upgrade
+#apt-get -y autoremove
 
 # Create partitions on journal disk for osd nodes only
 for NODE in $OSD_NODES; do
@@ -88,16 +65,17 @@ for NODE in $OSD_NODES; do
     fi
 done
 
-# Full update
-#apt-get -y dist-upgrade
-#apt-get -y autoremove
+# Modify /etc/hosts to allow ceph-deploy to resolve the guests
+IP_ADDRESS=$(ip addr show eth0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
+# Need to replace the loopback address by the real address
+sed -i "s/127.0.0.1\t$GUEST_NAME\t$GUEST_NAME/$IP_ADDRESS\t$GUEST_NAME\t$GUEST_NAME/g" /etc/hosts
+echo >> /etc/hosts
 
 # Signal that IP is ready
 echo -e "$IP_ADDRESS\t$GUEST_NAME" > "$GUEST_VAGRANT_SIGNAL_DIR/$GUEST_NAME-IP"
 
 # Wait for all nodes IP and update /etc/hosts
 TIMER_MAX=300
-echo >> /etc/hosts
 for NODE in $NODES; do
     if [[ $NODE != $GUEST_NAME ]]; then
         TIMER=0
@@ -116,25 +94,30 @@ for NODE in $NODES; do
     fi
 done
 
+# Create user ceph-admin if not existing
+cat /etc/passwd | grep $CEPH_ADMIN_USER || useradd -m -s /bin/bash $CEPH_ADMIN_USER
+
+# Make ceph-admin passwordless sudoer
+echo "$CEPH_ADMIN_USER ALL = (root) NOPASSWD:ALL" | tee "/etc/sudoers.d/$CEPH_ADMIN_USER"
+chmod 0440 "/etc/sudoers.d/$CEPH_ADMIN_USER"
+
+# Copy ceph-admin ssh keys and ssh config from Vagrant folder
+# Keys must be created by pre-up script
+# Executed in ceph admin context
+sudo -i -u $CEPH_ADMIN_USER <<CEPHADMINBLOCK
+    echo "Switch to $CEPH_ADMIN_USER context"
+    mkdir -p $GUEST_USER_SSH_DIR
+    chmod 700 $GUEST_USER_SSH_DIR
+    cd $GUEST_USER_SSH_DIR
+    rm -f id_rsa id_rsa.pub config authorized_keys
+    cp $GUEST_VAGRANT_SSH_DIR/$CEPH_ADMIN_USER-id_rsa id_rsa
+    cp $GUEST_VAGRANT_SSH_DIR/$CEPH_ADMIN_USER-id_rsa.pub id_rsa.pub
+    cp $GUEST_VAGRANT_SSH_DIR/$CEPH_ADMIN_USER-id_rsa.pub authorized_keys
+    cp $GUEST_VAGRANT_SSH_DIR/$CEPH_ADMIN_USER-config config
+    chmod 644 id_rsa.pub config authorized_keys
+    chmod 600 id_rsa
+CEPHADMINBLOCK
+echo "Switch to $(whoami) context"
+
 # Signal that provision is done
 echo "$(date --rfc-3339=ns) - Done!"  | tee "$GUEST_VAGRANT_SIGNAL_DIR/$GUEST_NAME-PROVISION"
-
-# Continue provisioning on admin node only
-[[ $GUEST_NAME != $ADMIN_NODE ]] && exit 0
-
-# Wait for all nodes to be ready
-TIMER_MAX=300
-for NODE in $NODES; do
-    TIMER=0
-    until [[ -r "$GUEST_VAGRANT_SIGNAL_DIR/$NODE-PROVISION" ]]; do
-        sleep 1
-        TIMER=$(($TIMER + 1))
-        if [[ $TIMER -gt $TIMER_MAX ]]; then
-            echo "Waited too long for $NODE!" >&2
-            exit 1
-        fi
-    done
-done
- 
-# Install ceph in ceph-admin context
-$CEPH_ADMIN_EXEC $GUEST_VAGRANT_SCRIPT_DIR/ceph-install.sh

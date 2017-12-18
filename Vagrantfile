@@ -10,13 +10,8 @@ Vagrant.configure("2") do |config|
 		run "pre-up.sh"
 	end
 
-	# Trigger the Vagrant post-destroy script aftre destroying the last VM only
-	# config.trigger.after :destroy, :vm => ["node-admin"], :append_to_path => ["#{vagrant_root}/scripts"] do
-		run "post-destroy.sh"
-	# end
-
 	# Shell provisionner for all VMs
-	config.vm.provision "shell", path: "scripts/provision.sh"
+	config.vm.provision "ceph-preflight", type: "shell", path: "scripts/provision.sh"
 	
 	# All VMs are based on the same box
 	config.vm.box = "bento/ubuntu-16.04"
@@ -37,7 +32,7 @@ Vagrant.configure("2") do |config|
 
 	# Standard configuration for all VMs
 	config.vm.provider :libvirt do |libvirt|
-		libvirt.memory = 1024
+		libvirt.memory = 2048
 		libvirt.volume_cache = "writeback"
 		libvirt.graphics_type = "spice"
 		libvirt.video_type = "qxl"
@@ -46,6 +41,7 @@ Vagrant.configure("2") do |config|
 	# admin VM
 	config.vm.define "node-admin", primary: true do |admin|
 		admin.vm.hostname = "node-admin"
+		admin.vm.provision "ceph-install", type: "shell", keep_color: true, path: "scripts/provision-admin.sh"
 	end
 
 	# osd1 VM with private cluster network
