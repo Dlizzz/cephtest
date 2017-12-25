@@ -42,39 +42,58 @@ export DEBIAN_FRONTEND=noninteractive
 locale-gen fr_FR.UTF-8
 
 # Install ceph repository (luminous version)
+$OUTPUT_LOG "Install ceph repository (luminous version)"
 wget -q -O- 'https://download.ceph.com/keys/release.asc' | apt-key add -
 echo deb https://download.ceph.com/debian-luminous/ $(lsb_release -sc) main | tee /etc/apt/sources.list.d/ceph.list
 apt-get update
 
 # Install chrony for time synchronization, gdisk for GPT partitioning, 
 # vnstat for network stats, htop for system monitor and ceph-deploy
+$OUTPUT_LOG "Install chrony, gdisk, vnstat, htop, ceph-deploy"
 apt-get -y install chrony gdisk vnstat htop ceph-deploy
+
+# Configure chrony with admin node as server and osd nodes as clients
+# Update chronyc password
+$OUTPUT_LOG "Configure chrony with admin node as server and osd nodes as clients"
+echo "1 chrony" > /etc/chrony/chrony.keys
+if [[ $GUEST_NAME == $ADMIN_NODE ]]; then
+    sed -i "s/#local stratum/local stratum/g" /etc/chrony/chrony.conf
+    sed -i "s/#allow 10\/8/allow 192.168\/16/g" /etc/chrony/chrony.conf
+else
+    sed -i "s/pool/server $ADMIN_NODE\n#pool/" /etc/chrony/chrony.conf
+fi
+# Restart chrony with new config
+systemctl restart chrony
 
 # Full update
 #apt-get -y dist-upgrade
 #apt-get -y autoremove
 
 # Create partitions on journal disk for osd nodes only
+$OUTPUT_LOG "Create partitions on journal disk for osd nodes"
 for NODE in $OSD_NODES; do
     if [[ $NODE == $GUEST_NAME ]]; then
+        $OUTPUT_LOG "Create partitions on $NODE"
         sgdisk --zap-all
         sgdisk --new=0:0:10G /dev/vda > /dev/null 2>&1
-        sgdisk --new=0:0:20G /dev/vda > /dev/null 2>&1
         sgdisk --largest-new=0 /dev/vda > /dev/null 2>&1
         sgdisk --print /dev/vda
     fi
 done
 
-# Modify /etc/hosts to allow ceph-deploy to resolve the guests
+# Modify /etc/hosts to allow ceph-deploy to resolve the guest
 IP_ADDRESS=$(ip addr show eth0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
 # Need to replace the loopback address by the real address
+$OUTPUT_LOG "Modify /etc/hosts to allow ceph-deploy to resolve the guest"
 sed -i "s/127.0.0.1\t$GUEST_NAME\t$GUEST_NAME/$IP_ADDRESS\t$GUEST_NAME\t$GUEST_NAME/g" /etc/hosts
 echo >> /etc/hosts
 
 # Signal that IP is ready
-echo -e "$IP_ADDRESS\t$GUEST_NAME" > "$GUEST_VAGRANT_SIGNAL_DIR/$GUEST_NAME-IP"
+$OUTPUT_LOG "Signal that IP is ready"
+echo -e "$IP_ADDRESS\t$GUEST_NAME" | tee "$GUEST_VAGRANT_SIGNAL_DIR/$GUEST_NAME-IP"
 
 # Wait for all nodes IP and update /etc/hosts
+$OUTPUT_LOG "Wait for all nodes IP and update /etc/hosts"
 TIMER_MAX=300
 for NODE in $NODES; do
     if [[ $NODE != $GUEST_NAME ]]; then
@@ -90,11 +109,13 @@ for NODE in $NODES; do
         # Remove record if existing
         sed -i "/$NODE/d" /etc/hosts
         # Add new record
-        cat "$GUEST_VAGRANT_SIGNAL_DIR/$NODE-IP" >> /etc/hosts
+        $OUTPUT_LOG "Add IP for $NODE"
+        cat "$GUEST_VAGRANT_SIGNAL_DIR/$NODE-IP" | tee -a /etc/hosts
     fi
 done
 
 # Create user ceph-admin if not existing
+$OUTPUT_LOG "Create user ceph-admin if not existing and make it paswordless sudoer"
 cat /etc/passwd | grep $CEPH_ADMIN_USER || useradd -m -s /bin/bash $CEPH_ADMIN_USER
 
 # Make ceph-admin passwordless sudoer
@@ -104,8 +125,9 @@ chmod 0440 "/etc/sudoers.d/$CEPH_ADMIN_USER"
 # Copy ceph-admin ssh keys and ssh config from Vagrant folder
 # Keys must be created by pre-up script
 # Executed in ceph admin context
-sudo -i -u $CEPH_ADMIN_USER <<CEPHADMINBLOCK
-    echo "Switch to $CEPH_ADMIN_USER context"
+$OUTPUT_LOG "Copy ssh keys, config and authorized keys"
+$OUTPUT_LOG "Switch to $CEPH_ADMIN_USER context"
+sudo -i -u $CEPH_ADMIN_USER << CEPHADMINBLOCK
     mkdir -p $GUEST_USER_SSH_DIR
     chmod 700 $GUEST_USER_SSH_DIR
     cd $GUEST_USER_SSH_DIR
@@ -117,7 +139,8 @@ sudo -i -u $CEPH_ADMIN_USER <<CEPHADMINBLOCK
     chmod 644 id_rsa.pub config authorized_keys
     chmod 600 id_rsa
 CEPHADMINBLOCK
-echo "Switch to $(whoami) context"
+$OUTPUT_LOG "Switch to $(whoami) context"
 
 # Signal that provision is done
+$OUTPUT_LOG "Signal that provision is done"
 echo "$(date --rfc-3339=ns) - Done!"  | tee "$GUEST_VAGRANT_SIGNAL_DIR/$GUEST_NAME-PROVISION"
