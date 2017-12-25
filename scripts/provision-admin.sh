@@ -34,6 +34,7 @@ if [[ $(hostname -s) != $ADMIN_NODE ]]; then
 fi
 
 # Wait for all nodes to be ready
+$OUTPUT_LOG "Wait of all nodes ready, with provision done"
 TIMER_MAX=300
 for NODE in $NODES; do
     TIMER=0

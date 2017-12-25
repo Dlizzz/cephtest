@@ -29,6 +29,7 @@ VERSION=pre-up-2.0-121617
 source "$(dirname "$(readlink -f "$0")")/cephtest-utils.sh"
 
 # (re)Create ssh keys
+$OUTPUT_LOG "Create SSH keys and config for ceph admin user"
 rm -f "$HOST_SSH_DIR/$CEPH_ADMIN_USER"-id_rsa*
 ssh-keygen -q -N "" -f "$HOST_SSH_DIR/$CEPH_ADMIN_USER-id_rsa"
 chmod 644 "$HOST_SSH_DIR/$CEPH_ADMIN_USER-id_rsa"
@@ -37,11 +38,12 @@ chmod 644 "$HOST_SSH_DIR/$CEPH_ADMIN_USER-id_rsa.pub"
 # (re)Create ssh config file
 rm -f "$HOST_SSH_DIR/$CEPH_ADMIN_USER-config"
 for NODE in $NODES; do
-    echo -e "Host $NODE\n\tHostname $NODE\n\tUser $CEPH_ADMIN_USER\n\tStrictHostKeyChecking no\n" >> "$HOST_SSH_DIR/$CEPH_ADMIN_USER-config"
+    echo -e "Host $NODE\n\tHostname $NODE\n\tUser $CEPH_ADMIN_USER\n\tStrictHostKeyChecking no\n" | tee -a "$HOST_SSH_DIR/$CEPH_ADMIN_USER-config"
 done
 chmod 644 "$HOST_SSH_DIR/$CEPH_ADMIN_USER-config"
 
 # Clean up IP and PROVISION signals
+$OUTPUT_LOG "Clean up IP and PROVISION signals"
 for NODE in $NODES; do
     rm -f "$HOST_SIGNAL_DIR/$NODE-IP"
     rm -f "$HOST_SIGNAL_DIR/$NODE-PROVISION"

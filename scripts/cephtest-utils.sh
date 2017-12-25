@@ -24,6 +24,15 @@
 # Version
 VERSION=cephtest-utils-1.0-120417
 
+# Cluster name
+CLUSTER_NAME="cephtest"
+
+# Script name
+SCRIPT=$(basename --suffix=.sh "$0")
+
+# Define log output
+OUTPUT_LOG="echo -e \n{$CLUSTER_NAME} {$SCRIPT} "
+
 # Ceph user
 CEPH_ADMIN_USER="ceph-admin"
 

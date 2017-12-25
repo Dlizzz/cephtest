@@ -58,15 +58,15 @@ Vagrant.configure("2") do |config|
       		:libvirt__network_name => "cluster-network"
 		osd1.vm.provider :libvirt do |libvirt|
 			libvirt.storage :file, 
-				:size => "30G", 
-				:type => "raw",
-				:cache => "writeback"
-			libvirt.storage :file, 
 				:size => "20G", 
 				:type => "raw",
 				:cache => "writeback"
 			libvirt.storage :file, 
-				:size => "20G", 
+				:size => "40G", 
+				:type => "raw",
+				:cache => "writeback"
+			libvirt.storage :file, 
+				:size => "40G", 
 				:type => "raw",
 				:cache => "writeback"
 		end
@@ -82,15 +82,15 @@ Vagrant.configure("2") do |config|
 			:libvirt__network_name => "cluster-network"
 		osd2.vm.provider :libvirt do |libvirt|
 			libvirt.storage :file, 
-				:size => "30G", 
-				:type => "raw",
-				:cache => "writeback"
-			libvirt.storage :file, 
 				:size => "20G", 
 				:type => "raw",
 				:cache => "writeback"
 			libvirt.storage :file, 
-				:size => "20G", 
+				:size => "40G", 
+				:type => "raw",
+				:cache => "writeback"
+			libvirt.storage :file, 
+				:size => "40G", 
 				:type => "raw",
 				:cache => "writeback"
 		end
